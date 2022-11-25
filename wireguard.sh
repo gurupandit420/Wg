@@ -28,21 +28,6 @@ sed -i '/#\?net.ipv4.ip_forward/d' /etc/sysctl.conf
 sed -i '$a\net.ipv4.ip_forward=1' /etc/sysctl.conf
 sysctl -p
 
-cat >/etc/dnsmasq.conf<<EOF
-except-interface=eth0
-dhcp-range=192.168.8.2,192.168.8.254,255.255.255.0,24h
-dhcp-option-force=option:router,192.168.8.1
-dhcp-option-force=option:dns-server,192.168.8.1
-dhcp-option-force=option:netbios-ns,192.168.8.1
-listen-address=127.0.0.1,192.168.8.1
-no-resolv
-bogus-priv
-no-negcache
-clear-on-reload
-cache-size=81920
-server=208.67.220.220#5353
-EOF
-
 cd /etc/wireguard
 wg genkey |tee privatekey |wg pubkey > publickey
 wg genpsk > presharedkey
