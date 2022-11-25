@@ -1,6 +1,6 @@
 #!/bin/bash
 
-WG_PORT='5222'
+WG_PORT='1194'
 IPAddr=`wget --no-check-certificate -qO- http://whatismyip.akamai.com`
 POOL='https://deb.debian.org/debian/pool/main/w/wireguard/'
 
@@ -58,16 +58,16 @@ ClientPub=`cat publickey.client`
 cat >simple.conf<<EOF
 [Interface]
 PrivateKey = $ServerKey
-Address = 192.168.8.1/24
+Address = 10.1.0.0/32
 #ListenPort = $WG_PORT
-DNS = 192.168.8.1
+DNS = 8.8.8.8
 #PostUp = iptables -A FORWARD -i wg0 -j ACCEPT; iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE;
 #PostDown = iptables -D FORWARD -i wg0 -j ACCEPT; iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE;
 
 [Peer]
 #Endpoint = ${IPAddr}:${WG_PORT}
 PublicKey = $ClientPub
-AllowedIPs = 192.168.8.1/24
+AllowedIPs = 0.0.0.0/0, ::/0
 PresharedKey = $ServerPsk
 
 EOF
@@ -85,7 +85,7 @@ sed -i "/^#/d" /etc/wireguard/wg0.conf
 sed -i 's/#Endpoint/Endpoint/' /etc/wireguard/wg0-client.conf
 sed -i "s|PrivateKey =.*|PrivateKey = $ClientKey|" /etc/wireguard/wg0-client.conf
 sed -i "s|PublicKey =.*|PublicKey = $ServerPub|" /etc/wireguard/wg0-client.conf
-sed -i "s|Address =.*|Address = 192.168.8.2/24|" /etc/wireguard/wg0-client.conf
+sed -i "s|Address =.*|Address = 10.1.0.0/32|" /etc/wireguard/wg0-client.conf
 sed -i "s|AllowedIPs =.*|AllowedIPs = 0.0.0.0/0|" /etc/wireguard/wg0-client.conf
 sed -i "/^#/d" /etc/wireguard/wg0-client.conf
 
