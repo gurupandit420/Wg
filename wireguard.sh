@@ -1,86 +1,161 @@
 #!/bin/bash
 
-WG_PORT='1194'
-IPAddr=`wget --no-check-certificate -qO- http://whatismyip.akamai.com`
-POOL='https://deb.debian.org/debian/pool/main/w/wireguard/'
+# ###########################################
+# ###########################################
+#
+# Wireguard installation script for Ubuntu 18.04
+# by OneMarcFifty
+# the place for digital DIY
+#
+# https://www.youtube.com/channel/UCG5Ph9Mm6UEQLJJ-kGIC2AQ
+#
+# ###########################################
+# ###########################################
 
-[ `dpkg -s libc6 |grep '^Version' |grep -o '[0-9\.]\{4\}' |head -n1 |cut -d'.' -f2` -ge "14" ] || exit 0
+# ###############################
+# This needs to be run as root !
+# ###############################
 
-apt-get update
-apt-get install -y libmnl-dev libelf-dev linux-headers-$(uname -r) build-essential pkg-config dkms resolvconf dnsmasq qrencode
+# ###########################################
+# Delete any old config
+# ###########################################
 
-arch=`dpkg --print-architecture`
-Version=`wget --no-check-certificate -qO- "${POOL}" |grep -o 'wireguard_[0-9\_\.\-]\{1,\}_' |head -n1 |cut -d'_' -f2`
-[ -n "$Version" ] || exit 1
+rm -f "/etc/wireguard/wg0.conf"
+rm -f "/etc/wireguard/privatekey"
+rm -f "/etc/wireguard/publickey"
 
-wget --no-check-certificate -qO "/tmp/wireguard_${Version}_all.deb" "${POOL}wireguard_${Version}_all.deb"
-wget --no-check-certificate -qO "/tmp/wireguard-dkms_${Version}_all.deb" "${POOL}wireguard-dkms_${Version}_all.deb"
-wget --no-check-certificate -qO "/tmp/wireguard-tools_${Version}_${arch}.deb" "${POOL}wireguard-tools_${Version}_${arch}.deb"
+if ip -br link | grep wg0 ; then
+   ip link delete wg0
+fi
 
-dpkg -i "/tmp/wireguard-tools_${Version}_${arch}.deb"
-dpkg -i "/tmp/wireguard-dkms_${Version}_all.deb"
-dpkg -i "/tmp/wireguard_${Version}_all.deb"
+# ###############################
+# update the software sources
+# ###############################
 
-[ -d /etc/wireguard ] && {
-command -v wg >/dev/null 2>&1
-[ $? == 0 ] || exit 1
-sed -i '/#\?net.ipv4.ip_forward/d' /etc/sysctl.conf
-sed -i '$a\net.ipv4.ip_forward=1' /etc/sysctl.conf
+apt update
+apt install -y software-properties-common curl qrencode
+add-apt-repository -y ppa:wireguard/wireguard
+
+# ###############################
+# install wireguard
+# ###############################
+
+apt install -y wireguard
+
+# let's also clean up a little bit
+# in case some redundant packages exist
+
+apt -y autoremove
+
+# ###############################
+# generate a key pair
+# ###############################
+
+
+# --- this works
+
+#touch /etc/wireguard/privatekey 
+#chmod 600 /etc/wireguard/privatekey 
+#cat  /etc/wireguard/privatekey | wg pubkey > /etc/wireguard/publickey
+
+# --- this is more elegant
+
+umask 077
+wg genkey > /etc/wireguard/privatekey
+wg pubkey < /etc/wireguard/privatekey > /etc/wireguard/publickey
+
+# ###############################
+# enable routing
+# ###############################
+
+# --- remove the comment from the forward flag in sysctl.conf
+#sed -i 's/#net.ipv4.ip_forward=1/net.ipv4.ip_forward=1/g' /etc/sysctl.conf
+
+# enable ip4 forwarding with sysctl
+sysctl -w net.ipv4.ip_forward=1
+
+# --- print out the content of sysctl.conf
 sysctl -p
 
-cd /etc/wireguard
-wg genkey |tee privatekey |wg pubkey > publickey
-wg genpsk > presharedkey
 
-wg genkey |tee privatekey.client |wg pubkey > publickey.client
+# ###########################################
+# define the wg0 interface
+# ###########################################
 
-ServerKey=`cat privatekey`
-ServerPub=`cat publickey`
-ServerPsk=`cat presharedkey`
-ClientKey=`cat privatekey.client`
-ClientPub=`cat publickey.client`
+# change this if you want
+export WG0ADDRESS=192.168.88.1/24
+# we are using export to allow for copy paste
 
-cat >simple.conf<<EOF
-[Interface]
-PrivateKey = $ServerKey
-Address = 10.1.0.0/32
-#ListenPort = $WG_PORT
-DNS = 8.8.8.8
-#PostUp = iptables -A FORWARD -i wg0 -j ACCEPT; iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE;
-#PostDown = iptables -D FORWARD -i wg0 -j ACCEPT; iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE;
+ip link add dev wg0 type wireguard
+ip address add dev wg0 $WG0ADDRESS
+wg set wg0 private-key /etc/wireguard/privatekey
+wg set wg0 listen-port 51820
 
-[Peer]
-#Endpoint = ${IPAddr}:${WG_PORT}
-PublicKey = $ClientPub
-AllowedIPs = 0.0.0.0/0, ::/0
-PresharedKey = $ServerPsk
+# ###########################################
+# up the interface
+# ###########################################
 
-EOF
+#ip link set wg0 up
 
-cp -rf /etc/wireguard/simple.conf /etc/wireguard/wg0.conf
-cp -rf /etc/wireguard/simple.conf /etc/wireguard/wg0-client.conf
+# --- this would not be persistent, i.e. needs to be redone afer reboot
+# --- so we create a config file and make it persistent:
 
-# Server
-sed -i 's/#ListenPort/ListenPort/' /etc/wireguard/wg0.conf
-sed -i 's/#PostUp/PostUp/' /etc/wireguard/wg0.conf
-sed -i 's/#PostDown/PostDown/' /etc/wireguard/wg0.conf
-sed -i "/^#/d" /etc/wireguard/wg0.conf
+wg showconf wg0 > /etc/wireguard/wg0.conf
 
-# Client
-sed -i 's/#Endpoint/Endpoint/' /etc/wireguard/wg0-client.conf
-sed -i "s|PrivateKey =.*|PrivateKey = $ClientKey|" /etc/wireguard/wg0-client.conf
-sed -i "s|PublicKey =.*|PublicKey = $ServerPub|" /etc/wireguard/wg0-client.conf
-sed -i "s|Address =.*|Address = 10.1.0.0/32|" /etc/wireguard/wg0-client.conf
-sed -i "s|AllowedIPs =.*|AllowedIPs = 0.0.0.0/0|" /etc/wireguard/wg0-client.conf
-sed -i "/^#/d" /etc/wireguard/wg0-client.conf
+# -- the showconf command does not give the IP address so we just print it into the config file
 
-# Print QR code for client config.
-cat /etc/wireguard/wg0-client.conf |qrencode -o - -t UTF8
+echo "Address=$WG0ADDRESS" >> /etc/wireguard/wg0.conf
+echo "SaveConfig = true" >> /etc/wireguard/wg0.conf
 
-# Add to start up
-sed -i '/wg-quick/d' /etc/crontab
-echo -e "@reboot root wg-quick down wg0 2>/dev/null; wg-quick up wg0\n\n" >>/etc/crontab
+# find our own public IP address
+# we get this info from the internet
+# using curl with root is dangerous, so we
+# run it as nobody
 
-# Try it!
-wg-quick down wg0 2>/dev/null; wg-quick up wg0
-}
+
+export OUR_OWN_IP=`sudo -u nobody curl -s ipinfo.io/ip`
+
+# find out which interface the public IP address is on
+
+readarray -d " " -t templine <<< $(ip -br addr | grep $OUR_OWN_IP)
+export OUR_INTERFACE=${templine[0]}
+
+echo "our interface:$OUR_INTERFACE:"
+
+# The initial idea here was to find the interface that has the public IP
+# address. This will not work in a NAT environment, i.e.
+# where the VPS is behind a NAT router and does not have the
+# public address directly.
+
+# Fix : If we do not get an interface this way we just use the first 
+# interface with the default route - we check for a minimum length of 3
+# checking for zero length like this 
+# [ -z "$OUR_WAN_INTERFACE" ] && export OUR_WAN_INTERFACE = ip route | grep default | sed s/.*dev\ //g | sed s/\ .*//g
+# does not work because there is a line feed
+# in the variable
+
+if [ ${#OUR_INTERFACE} -le 2 ]; then
+    echo "WAN Interface not found - was:${OUR_INTERFACE}:"
+    export OUR_INTERFACE=`ip route | grep default | sed s/.*dev\ //g | sed s/\ .*//g`
+    echo "WAN Interface is now: $OUR_INTERFACE"
+fi
+
+# At this point, our VPN Server yould just be a router
+# but we want it to mask our IP address.
+# Also the ISP would not route our private 192.168.88.x address
+# hence we need some firewall rules added
+
+echo "PostUp = iptables -A FORWARD -i %i -j ACCEPT; iptables -A FORWARD -o %i -j ACCEPT; iptables -t nat -A POSTROUTING -o $OUR_INTERFACE -j MASQUERADE" >> /etc/wireguard/wg0.conf
+echo "PostDOWN = iptables -D FORWARD -i %i -j ACCEPT; iptables -D FORWARD -o %i -j ACCEPT; iptables -t nat -D POSTROUTING -o $OUR_INTERFACE -j MASQUERADE" >> /etc/wireguard/wg0.conf
+
+
+# ###########################################################
+# this will automatically bring up the interface after reboot
+# ###########################################################
+
+systemctl enable wg-quick@wg0.service
+
+# ###########################################
+# ###########################################
+
+
