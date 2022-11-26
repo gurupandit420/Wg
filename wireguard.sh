@@ -73,7 +73,6 @@ wg pubkey < /etc/wireguard/privatekey > /etc/wireguard/publickey
 
 # enable ip4 forwarding with sysctl
 sysctl -w net.ipv4.ip_forward=1
-sysctl -w net.ipv6.ip_forward=1
 
 # --- print out the content of sysctl.conf
 sysctl -p
