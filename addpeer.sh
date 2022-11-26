@@ -21,7 +21,7 @@
 # second parameter is the IP address it gets on the VPN
 
 [[ ! -z "$1" ]] && WGCLIENTNAME=$1 || WGCLIENTNAME=newclient
-[[ ! -z "$2" ]] && WGCLIENTADDRESS=$2 || WGCLIENTADDRESS="10.0.0.0/32,fd42:42:42::1/64"
+[[ ! -z "$2" ]] && WGCLIENTADDRESS=$2 || WGCLIENTADDRESS="10.0.0.0/32"
 
 echo -e "\ngenerating peer $WGCLIENTNAME with IP $WGCLIENTADDRESS\n"
 
@@ -56,7 +56,7 @@ umask 077
 echo "# ######################################################" > $new_config_file_name
 echo "# ########### COPY PASTE BELOW #########################" >> $new_config_file_name
 echo "# ######################################################" >> $new_config_file_name
-echo -e "[Interface]\nPrivateKey = $NEW_PRIVATE_KEY\nAddress=$WGCLIENTADDRESS\nDNS=8.8.8.8\n,2001:4860:4860::8888" >>$new_config_file_name
+echo -e "[Interface]\nPrivateKey = $NEW_PRIVATE_KEY\nAddress=$WGCLIENTADDRESS\nDNS=8.8.8.8\n" >>$new_config_file_name
 echo -e "[Peer]\nPublicKey = $SERVER_PUBLIC_KEY\nAllowedIPs=0.0.0.0/0,::/0\nEndPoint=$OUR_OWN_IP:"${SERVER_LISTENING_PORT}"\n" >> $new_config_file_name
 echo "# ######################################################" >> $new_config_file_name
 echo "# ########### COPY PASTE ABOVE #########################" >> $new_config_file_name
