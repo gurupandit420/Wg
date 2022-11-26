@@ -57,7 +57,7 @@ echo "# ######################################################" > $new_config_fi
 echo "# ########### COPY PASTE BELOW #########################" >> $new_config_file_name
 echo "# ######################################################" >> $new_config_file_name
 echo -e "[Interface]\nPrivateKey = $NEW_PRIVATE_KEY\nAddress=$WGCLIENTADDRESS\nDNS=8.8.8.8\n" >>$new_config_file_name
-echo -e "[Peer]\nPublicKey = $SERVER_PUBLIC_KEY\nAllowedIPs=0.0.0.0/0,::/0\nEndPoint=$OUR_OWN_IP:"${SERVER_LISTENING_PORT}"\n" >> $new_config_file_name
+echo -e "[Peer]\nPublicKey = $SERVER_PUBLIC_KEY\nAllowedIPs=0.0.0.0/0\nEndPoint=$OUR_OWN_IP:"${SERVER_LISTENING_PORT}"\n" >> $new_config_file_name
 echo "# ######################################################" >> $new_config_file_name
 echo "# ########### COPY PASTE ABOVE #########################" >> $new_config_file_name
 echo "# ######################################################" >> $new_config_file_name
