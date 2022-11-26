@@ -73,6 +73,7 @@ wg pubkey < /etc/wireguard/privatekey > /etc/wireguard/publickey
 
 # enable ip4 forwarding with sysctl
 sysctl -w net.ipv4.ip_forward=1
+sysctl -w net.ipv6.ip_forward=1
 
 # --- print out the content of sysctl.conf
 sysctl -p
@@ -83,13 +84,13 @@ sysctl -p
 # ###########################################
 
 # change this if you want
-export WG0ADDRESS=192.168.88.1/24
+export WG0ADDRESS=10.0.0.0/24 ,fd42:42:42::1/64
 # we are using export to allow for copy paste
 
 ip link add dev wg0 type wireguard
 ip address add dev wg0 $WG0ADDRESS
 wg set wg0 private-key /etc/wireguard/privatekey
-wg set wg0 listen-port 51820
+wg set wg0 listen-port 1194
 
 # ###########################################
 # up the interface
