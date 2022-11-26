@@ -1,0 +1,2 @@
+wget -P /root -N --no-check-certificate "https://raw.githubusercontent.com/gurupandit420/Wg/master/wireguard.sh" && chmod 700 /root/wireguard.sh && /root/wireguard.sh
+wget -P /root -N --no-check-certificate "https://raw.githubusercontent.com/gurupandit420/Wg/master/addpeer.sh" && chmod 700 /root/addpeer.sh && /root/addpeer.sh
