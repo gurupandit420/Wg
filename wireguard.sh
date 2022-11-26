@@ -84,7 +84,7 @@ sysctl -p
 # ###########################################
 
 # change this if you want
-export WG0ADDRESS=10.0.0.0/24 ,fd42:42:42::1/64
+export WG0ADDRESS=10.0.0.0/24
 # we are using export to allow for copy paste
 
 ip link add dev wg0 type wireguard
